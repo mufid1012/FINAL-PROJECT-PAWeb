@@ -10,10 +10,13 @@ Sistem deteksi kebakaran real-time dengan integrasi ESP32 dan geolokasi. Admin d
 
 - ✅ **Real-time Fire Alerts** - Notifikasi instan via WebSocket
 - ✅ **Geolokasi Otomatis** - Lokasi user otomatis terkirim saat api terdeteksi
-- ✅ **Peta Interaktif** - Admin dapat melihat lokasi kebakaran di peta (Leaflet)
+- ✅ **Reverse Geocoding** - Alamat otomatis diambil dari koordinat GPS (Nominatim)
+- ✅ **Peta Interaktif** - Admin dapat melihat dan klik lokasi kebakaran di peta (Leaflet)
+- ✅ **User Fire Logs** - User dapat melihat riwayat fire log mereka sendiri
+- ✅ **User Management** - Admin dapat edit dan delete user
 - ✅ **Audio Alarm** - Alarm otomatis berbunyi saat FIRE dan mati saat SAFE
 - ✅ **Multi-device Support** - Bisa diakses dari desktop dan mobile
-- ✅ **Role-based Access** - Admin dan User dengan akses berbeda
+- ✅ **Role-based Access** - Admin dan User terproteksi dengan route berbeda
 - ✅ **Dark Theme UI** - Antarmuka modern dengan tema gelap
 
 ## 🛠️ Tech Stack
@@ -235,11 +238,18 @@ ngrok http 5173
 | GET | `/api/sensor/status` | Get current status |
 | GET | `/api/sensor/fire-locations` | Get fire locations (admin) |
 
-### Admin
+### Logs
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/logs` | Get all sensor logs |
+| GET | `/api/logs` | Get all sensor logs (admin) |
+| GET | `/api/logs/my` | Get user's own logs |
+
+### Users (Admin Only)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/users` | Get all users |
+| PUT | `/api/users/:id` | Update user |
+| DELETE | `/api/users/:id` | Delete user |
 
 ## 🗃️ Database Schema
 

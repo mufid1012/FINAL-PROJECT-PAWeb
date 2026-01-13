@@ -34,11 +34,11 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 
-                    {/* Protected routes */}
+                    {/* Protected routes - User only */}
                     <Route
                         path="/dashboard"
                         element={
-                            <ProtectedRoute>
+                            <ProtectedRoute userOnly>
                                 <UserDashboard />
                             </ProtectedRoute>
                         }

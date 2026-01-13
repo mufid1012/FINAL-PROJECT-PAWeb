@@ -12,6 +12,8 @@ const UserDashboard = () => {
     const [connected, setConnected] = useState(false);
     const [locationStatus, setLocationStatus] = useState('idle'); // idle, sending, sent, error
     const [userLocation, setUserLocation] = useState(null);
+    const [myLogs, setMyLogs] = useState([]);
+    const [logsLoading, setLogsLoading] = useState(true);
     const audioRef = useRef(null);
     const socketRef = useRef(null);
 
@@ -38,6 +40,26 @@ const UserDashboard = () => {
         });
     };
 
+    // Reverse geocode to get address from coordinates
+    const getAddressFromCoordinates = async (latitude, longitude) => {
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+                {
+                    headers: {
+                        'Accept-Language': 'id', // Indonesian language
+                        'User-Agent': 'FireDetectionApp/1.0'
+                    }
+                }
+            );
+            const data = await response.json();
+            return data.display_name || null;
+        } catch (error) {
+            console.error('Reverse geocoding failed:', error);
+            return null;
+        }
+    };
+
     // Send location to server when fire detected
     const sendLocationToServer = async (logId) => {
         try {
@@ -45,15 +67,19 @@ const UserDashboard = () => {
             const location = await getCurrentLocation();
             setUserLocation(location);
 
+            // Get address from coordinates
+            const address = await getAddressFromCoordinates(location.latitude, location.longitude);
+
             // api service already includes auth token via interceptor
             await api.post('/sensor/location', {
                 logId,
                 latitude: location.latitude,
-                longitude: location.longitude
+                longitude: location.longitude,
+                address: address
             });
 
             setLocationStatus('sent');
-            console.log('📍 Location sent to server:', location);
+            console.log('📍 Location sent to server:', location, 'Address:', address);
         } catch (error) {
             console.error('Failed to send location:', error);
             setLocationStatus('error');
@@ -74,7 +100,21 @@ const UserDashboard = () => {
             }
         };
 
+        // Fetch user's logs
+        const fetchMyLogs = async () => {
+            try {
+                setLogsLoading(true);
+                const response = await api.get('/logs/my');
+                setMyLogs(response.data);
+            } catch (error) {
+                console.error('Failed to fetch my logs:', error);
+            } finally {
+                setLogsLoading(false);
+            }
+        };
+
         fetchInitialStatus();
+        fetchMyLogs();
 
         // Connect to Socket.io
         socketRef.current = io(SOCKET_URL, {
@@ -237,6 +277,72 @@ const UserDashboard = () => {
                         </button>
                     </div>
                 )}
+
+                {/* My Fire Logs Section */}
+                <div className="mt-12">
+                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                        <svg className="w-7 h-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        My Fire Logs
+                    </h2>
+
+                    <div className="glass-card rounded-2xl overflow-hidden">
+                        {logsLoading ? (
+                            <div className="p-8 text-center">
+                                <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                <p className="text-slate-400">Loading your logs...</p>
+                            </div>
+                        ) : myLogs.length === 0 ? (
+                            <div className="p-8 text-center">
+                                <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p className="text-slate-400">No fire logs yet</p>
+                                <p className="text-sm text-slate-500 mt-1">Your fire detection history will appear here</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-slate-800/50">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Location</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/50">
+                                        {myLogs.map((log) => (
+                                            <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${log.status === 'FIRE'
+                                                        ? 'bg-red-500/20 text-red-400'
+                                                        : 'bg-green-500/20 text-green-400'
+                                                        }`}>
+                                                        {log.status === 'FIRE' ? '🔥' : '✅'} {log.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                                                    {log.latitude && log.longitude
+                                                        ? `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}`
+                                                        : '-'
+                                                    }
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-300 max-w-xs truncate">
+                                                    {log.address || '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
+                                                    {new Date(log.createdAt).toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </main>
         </div>
     );

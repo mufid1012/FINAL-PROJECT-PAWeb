@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { getLogs } = require('../controllers/logController');
+const { getLogs, getMyLogs } = require('../controllers/logController');
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 
-// Admin only route
+// User route - get own logs only
+router.get('/my', auth, getMyLogs);
+
+// Admin only route - get all logs
 router.get('/', auth, roleCheck('admin'), getLogs);
 
 module.exports = router;
+

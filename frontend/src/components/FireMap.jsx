@@ -21,23 +21,29 @@ const fireIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-// Component to re-center map when locations change
-const MapUpdater = ({ locations }) => {
+// Component to re-center map when locations change or when a location is selected
+const MapUpdater = ({ locations, selectedLocation }) => {
     const map = useMap();
 
     useEffect(() => {
-        if (locations && locations.length > 0) {
+        if (selectedLocation && selectedLocation.latitude && selectedLocation.longitude) {
+            // Zoom to selected location
+            map.setView([selectedLocation.latitude, selectedLocation.longitude], 17, {
+                animate: true,
+                duration: 0.5
+            });
+        } else if (locations && locations.length > 0) {
             const latestLocation = locations[0];
             if (latestLocation.latitude && latestLocation.longitude) {
                 map.setView([latestLocation.latitude, latestLocation.longitude], 15);
             }
         }
-    }, [locations, map]);
+    }, [locations, selectedLocation, map]);
 
     return null;
 };
 
-const FireMap = ({ locations = [], height = '400px' }) => {
+const FireMap = ({ locations = [], height = '400px', selectedLocation = null }) => {
     // Default center (Indonesia - Jakarta)
     const defaultCenter = [-6.200000, 106.816666];
     const defaultZoom = 5;
@@ -59,7 +65,7 @@ const FireMap = ({ locations = [], height = '400px' }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                <MapUpdater locations={locations} />
+                <MapUpdater locations={locations} selectedLocation={selectedLocation} />
 
                 {locations.map((location) => (
                     location.latitude && location.longitude && (
